@@ -8,3 +8,4 @@ touch $HOME/logs/nginx/access.log $HOME/logs/nginx/error.log
 (tail -f -n 0 $HOME/logs/nginx/*.log &)
 
 exec $HOME/vendor/nginx/sbin/nginx -p $HOME -c $HOME/config/nginx.conf
+exec node $HOME/server/app.js

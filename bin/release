@@ -5,5 +5,4 @@ cat <<EOF
 ---
 default_process_types:
   web: sh boot.sh
-  api: node ./server/app.js
 EOF
