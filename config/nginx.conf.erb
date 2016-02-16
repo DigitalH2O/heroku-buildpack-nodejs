@@ -33,7 +33,7 @@ http {
 
   <% if ENV["EMBER_PROXY_URL"] %>
     upstream node_cluster {
-      server <%= ENV["CLIENT_MAX_BODY_SIZE"] %> fail_timeout=0;
+      server <%= ENV["EMBER_PROXY_URL"] %> fail_timeout=0;
     }
   <% end %>
 
