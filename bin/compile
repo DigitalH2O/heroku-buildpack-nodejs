@@ -19,12 +19,18 @@ CACHE_DIR=${2:-}
 ENV_DIR=${3:-}
 BP_DIR=$(cd $(dirname ${0:-}); cd ..; pwd)
 
+# Load some convenience functions like status(), echo(), and indent()
+source $BP_DIR/bin/common.sh
+
 mkdir -p "$BUILD_DIR/.heroku/node/"
 cd $BUILD_DIR
 export PATH="$BUILD_DIR/.heroku/node/bin":$PATH
 
 LOG_FILE='/tmp/node-build-log.txt'
 echo "" > "$LOG_FILE"
+
+BUILD_ENV=${EMBER_ENV:-production}
+status "Building environment: $BUILD_ENV"
 
 ### Load dependencies
 
@@ -146,6 +152,42 @@ cache_build() {
   save_signature
 }
 
+# NGINX
+status "Downloading and installing nginx"
+nginx_url=https://s3.amazonaws.com/devmynd-github/heroku-nginx-1.6.0.tar.gz
+curl $nginx_url -s -o - | tar xzf - -C $BUILD_DIR/vendor
+
+status "Adding boot script"
+cp $BP_DIR/bin/boot.sh $BUILD_DIR
+
+status "Copying configs"
+mkdir -p $BUILD_DIR/config
+cp $BP_DIR/config/mime.types $BUILD_DIR/config
+
+if [[ ! -f $BUILD_DIR/config/nginx.conf.erb ]]; then
+  cp $BP_DIR/config/nginx.conf.erb $BUILD_DIR/config
+else
+  status "Custom nginx config found"
+fi
+
+# EMBER
+if test -f $BUILD_DIR/hooks/before_hook.sh; then
+  status "Before hook detected. Running..."
+  source $BUILD_DIR/hooks/before_hook.sh
+fi
+
+status "Building Ember CLI application $BUILD_ENV distribution"
+$BUILD_DIR/node_modules/ember-cli/bin/ember build --environment $BUILD_ENV | indent
+
+if test -f $BUILD_DIR/hooks/after_hook.sh; then
+  status "After hook detected. Running..."
+  source $BUILD_DIR/hooks/after_hook.sh
+fi
+
+status "Adding boot script"
+cp $BP_DIR/bin/boot.sh $BUILD_DIR
+
+
 header "Caching build"
 cache_build | output "$LOG_FILE"
 
@@ -154,5 +196,7 @@ summarize_build() {
   (npm ls --depth=0 | tail -n +2 || true) 2>/dev/null
 }
 
-header "Build succeeded!"
+header "Node Build succeeded!"
 summarize_build | output "$LOG_FILE"
+
+
